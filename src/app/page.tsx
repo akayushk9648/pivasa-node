@@ -25,9 +25,15 @@ export default async function Home() {
     (p) => p.plate_technology?.includes("Tubular") || p.capacity?.includes("Ah")
   ).slice(0, 3);
 
-  const featuredInverters = products.filter(
+  let featuredInverters = products.filter(
     (p) => p.plate_technology?.includes("Sine Wave") || p.capacity?.includes("VA")
   ).slice(0, 3);
+
+  if (featuredInverters.length === 0) {
+    featuredInverters = SAMPLE_PRODUCTS.filter(
+      (p) => p.plate_technology?.includes("Sine Wave") || p.capacity?.includes("VA")
+    ).slice(0, 3);
+  }
 
   return (
     <div className="flex flex-col min-h-screen">

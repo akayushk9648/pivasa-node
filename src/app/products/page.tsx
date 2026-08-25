@@ -26,15 +26,32 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   let filtered = allProducts.filter((product) => {
     // Category match
     if (activeCategory) {
-      if (activeCategory === "inverter-batteries" && !product.plate_technology?.includes("Tubular") && !product.capacity?.includes("Ah")) {
-        return false;
+      const catSlug = activeCategory.toLowerCase();
+      const catName = (product.category?.category_name || "").toLowerCase();
+      const catId = (product.category_id || "").toLowerCase();
+
+      let matchCat = catId === catSlug || catName.includes(catSlug);
+
+      if (catSlug === "inverter-batteries" || catSlug === "tubular-batteries") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000001" ||
+          catName.includes("tubular") ||
+          (Boolean(product.plate_technology?.toLowerCase().includes("tubular")) && !catName.includes("automotive"));
+      } else if (catSlug === "inverters-ups" || catSlug === "inverters") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000002" ||
+          catName.includes("ups") ||
+          (catName.includes("inverter") && !catName.includes("batter")) ||
+          Boolean(product.capacity?.toLowerCase().includes("va")) ||
+          Boolean(product.plate_technology?.toLowerCase().includes("sine wave"));
+      } else if (catSlug === "automotive-batteries" || catSlug === "car-batteries") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000003" ||
+          catName.includes("automotive") ||
+          (!product.plate_technology?.toLowerCase().includes("tubular") && !catName.includes("tubular") && !catName.includes("inverter"));
       }
-      if (activeCategory === "inverters-ups" && !product.capacity?.includes("VA") && !product.plate_technology?.includes("Sine Wave")) {
-        return false;
-      }
-      if (activeCategory === "automotive-batteries" && !product.brand_series?.includes("Mileage") && !product.plate_technology?.includes("Calcium")) {
-        return false;
-      }
+
+      if (!matchCat) return false;
     }
 
     // Brand match
@@ -70,7 +87,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     filtered.sort((a, b) => b.total_warranty_months - a.total_warranty_months);
   }
 
-  const brands = ["Exide", "Amaron", "Luminous", "Microtek", "APC by Schneider Electric"];
+  const dynamicBrands = Array.from(new Set(allProducts.map((p) => p.brand_name).filter(Boolean)));
+  const defaultBrands = ["Exide", "Amaron", "Luminous", "Microtek", "APC by Schneider Electric"];
+  const brands = Array.from(new Set([...dynamicBrands, ...defaultBrands]));
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">

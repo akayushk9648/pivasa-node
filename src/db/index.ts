@@ -9,6 +9,20 @@ function getConnectionString(): string {
       "DATABASE_URL is missing. Please set DATABASE_URL in your hosting environment variables."
     );
   }
+
+  // Handle unescaped special characters in password/user (e.g. '#' or '@')
+  const match = rawUrl.match(/^(postgres(?:ql)?:\/\/)([^:]+):(.*)@([^/?#]+)(.*)$/);
+  if (match) {
+    const [, protocol, username, password, hostPort, rest] = match;
+    try {
+      const safeUser = encodeURIComponent(decodeURIComponent(username));
+      const safePassword = encodeURIComponent(decodeURIComponent(password));
+      rawUrl = `${protocol}${safeUser}:${safePassword}@${hostPort}${rest}`;
+    } catch {
+      // fallback if decoding fails
+    }
+  }
+
   // Automatically route through Supabase Transaction Pooler port 6543 to avoid connection exhaustion
   if (rawUrl.includes("pooler.supabase.com:5432")) {
     rawUrl = rawUrl.replace(":5432", ":6543");
