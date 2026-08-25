@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%; /* Pure White */
+    --foreground: 222 47% 15%; /* Deep Navy Text */
+    --card: 0 0% 100%; /* Pure White Card */
+    --card-foreground: 222 47% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 15%;
+    
+    /* Primary: Pivasa Power Red (#DC2626) */
+    --primary: 0 72% 51%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Deep Navy Blue (#0F172A) */
+    --secondary: 222 47% 15%;
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Muted & Accent (White-Navy tint) */
+    --muted: 214 32% 96%;
+    --muted-foreground: 215 25% 40%;
+    --accent: 0 84% 97%;
+    --accent-foreground: 0 72% 51%;
+    --destructive: 0 84% 60%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 0 72% 51%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
