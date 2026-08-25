@@ -1,5 +1,3 @@
-import crypto from "crypto";
-
 const SESSION_SECRET = "pivasa_power_enterprise_secure_session_secret_key_2026";
 const PBKDF2_ITERATIONS = 100000;
 const KEY_LEN = 64;
@@ -33,11 +31,26 @@ function fromBase64Url(b64: string): string {
 }
 
 /**
+ * Safely access Node.js crypto module only when running on Node.js server
+ */
+function getNodeCrypto(): any {
+  if (typeof require !== "undefined") {
+    try {
+      return require("crypto");
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * Generates a cryptographically secure random salt
  */
 export function generateSalt(): string {
-  if (typeof crypto !== "undefined" && crypto.randomBytes) {
-    return crypto.randomBytes(16).toString("hex");
+  const nodeCrypto = getNodeCrypto();
+  if (nodeCrypto && nodeCrypto.randomBytes) {
+    return nodeCrypto.randomBytes(16).toString("hex");
   }
   const bytes = new Uint8Array(16);
   globalThis.crypto.getRandomValues(bytes);
@@ -48,7 +61,11 @@ export function generateSalt(): string {
  * Hashes a password using PBKDF2 with SHA-512 (100,000 iterations)
  */
 export function hashPassword(password: string, salt: string): string {
-  return crypto.pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LEN, DIGEST).toString("hex");
+  const nodeCrypto = getNodeCrypto();
+  if (nodeCrypto && nodeCrypto.pbkdf2Sync) {
+    return nodeCrypto.pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LEN, DIGEST).toString("hex");
+  }
+  throw new Error("Password hashing is only supported in Node.js server runtime.");
 }
 
 /**
@@ -69,10 +86,10 @@ export function verifyPassword(password: string, salt: string, storedHash: strin
 }
 
 /**
- * Computes HMAC-SHA256 signature using universal Web Crypto API
+ * Computes HMAC-SHA256 signature using universal Web Crypto API (100% Edge & Node native)
  */
 async function computeHmac(data: string): Promise<string> {
-  const webCrypto = typeof globalThis.crypto?.subtle !== "undefined" ? globalThis.crypto : crypto.webcrypto;
+  const webCrypto = globalThis.crypto;
   const enc = new TextEncoder();
   const key = await webCrypto.subtle.importKey(
     "raw",
