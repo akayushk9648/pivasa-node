@@ -3,7 +3,13 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 function getConnectionString(): string {
-  let rawUrl = process.env.DATABASE_URL || "postgres://postgres:postgres@localhost:5432/postgres";
+  let rawUrl = process.env.DATABASE_URL || "";
+  if (!rawUrl) {
+    throw new Error(
+      "DATABASE_URL is missing. Please set DATABASE_URL in your hosting environment variables."
+    );
+  }
+  // Automatically route through Supabase Transaction Pooler port 6543 to avoid connection exhaustion
   if (rawUrl.includes("pooler.supabase.com:5432")) {
     rawUrl = rawUrl.replace(":5432", ":6543");
   }
@@ -20,12 +26,14 @@ declare global {
 export function getClient(): postgres.Sql {
   if (!globalThis.postgresClient) {
     const conn = getConnectionString();
+    const isSupabase = conn.includes("supabase.com") || conn.includes("pooler");
+
     globalThis.postgresClient = postgres(conn, {
-      prepare: false,
+      prepare: false, // Transaction pooler requires prepared statements disabled
       max: 10,
       idle_timeout: 20,
-      connect_timeout: 10,
-      ssl: conn.includes("supabase") ? "require" : undefined,
+      connect_timeout: 15,
+      ssl: isSupabase ? "require" : undefined,
     });
   }
   return globalThis.postgresClient;

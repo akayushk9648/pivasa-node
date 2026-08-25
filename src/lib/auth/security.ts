@@ -1,4 +1,4 @@
-const SESSION_SECRET = "pivasa_power_enterprise_secure_session_secret_key_2026";
+const SESSION_SECRET = process.env.ADMIN_SESSION_SECRET || "pivasa_power_enterprise_secure_session_secret_key_2026";
 const PBKDF2_ITERATIONS = 100000;
 const KEY_LEN = 64;
 const DIGEST = "sha512";

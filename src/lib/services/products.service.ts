@@ -192,6 +192,7 @@ export async function getProducts(options?: {
     }
     return list;
   } catch (err) {
+    console.error("[GET_PRODUCTS_ERROR]", err);
     return SAMPLE_PRODUCTS;
   }
 }
@@ -212,6 +213,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
     return SAMPLE_PRODUCTS.find((p) => p.link === slug) || null;
   } catch (err) {
+    console.error("[GET_PRODUCT_BY_SLUG_ERROR]", err);
     return SAMPLE_PRODUCTS.find((p) => p.link === slug) || null;
   }
 }
