@@ -145,47 +145,57 @@ export default function ProductDetailClient({ product }: { product: Product }) {
             </div>
           </div>
 
-          {/* Interactive Old Battery Exchange Trade-in Card */}
-          <div 
-            onClick={() => setExchangeOldBattery(!exchangeOldBattery)}
-            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer select-none ${
-              exchangeOldBattery 
-                ? "bg-emerald-50/70 border-emerald-500 shadow-sm" 
-                : "bg-slate-50 border-slate-200 hover:border-slate-300"
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={exchangeOldBattery}
-                  onChange={(e) => setExchangeOldBattery(e.target.checked)}
-                  className="h-5 w-5 mt-0.5 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
-                />
-                <div>
-                  <div className="font-extrabold text-sm text-navy flex items-center gap-1.5">
-                    <Sparkles className="h-4 w-4 text-emerald-600" />
-                    Exchange Old Scrap Battery & Save ₹{scrapDiscount.toLocaleString("en-IN")}
+          {/* Interactive Old Battery Exchange Trade-in Card / Installation Guarantee */}
+          {scrapDiscount > 0 ? (
+            <div 
+              onClick={() => setExchangeOldBattery(!exchangeOldBattery)}
+              className={`p-4 rounded-2xl border-2 transition-all cursor-pointer select-none ${
+                exchangeOldBattery 
+                  ? "bg-emerald-50/70 border-emerald-500 shadow-sm" 
+                  : "bg-slate-50 border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={exchangeOldBattery}
+                    onChange={(e) => setExchangeOldBattery(e.target.checked)}
+                    className="h-5 w-5 mt-0.5 rounded text-primary focus:ring-primary cursor-pointer accent-primary"
+                  />
+                  <div>
+                    <div className="font-extrabold text-sm text-navy flex items-center gap-1.5">
+                      <Sparkles className="h-4 w-4 text-emerald-600" />
+                      Exchange Old Scrap Battery & Save ₹{scrapDiscount.toLocaleString("en-IN")}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                      Give your old junk/scrap battery of any brand at the time of delivery. Our technician will collect it at your doorstep.
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                    Give your old junk/scrap battery of any brand at the time of delivery. Our technician will collect it at your doorstep.
-                  </p>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-xs text-emerald-700 font-bold block">-₹{scrapDiscount.toLocaleString("en-IN")}</span>
+                  <span className="text-[10px] text-emerald-600 font-semibold">Instant Discount</span>
                 </div>
               </div>
 
-              <div className="text-right shrink-0">
-                <span className="text-xs text-emerald-700 font-bold block">-₹{scrapDiscount.toLocaleString("en-IN")}</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">Instant Discount</span>
+              {exchangeOldBattery && (
+                <div className="mt-3 pt-3 border-t border-emerald-200 flex items-center justify-between text-xs font-black text-emerald-900">
+                  <span>Net Effective Price per unit:</span>
+                  <span className="text-base">₹{effectivePrice.toLocaleString("en-IN")}</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 flex items-start gap-3">
+              <CheckCircle2 className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-slate-700">
+                <strong className="text-navy font-bold block text-sm mb-0.5">Free Certified Installation in Varanasi</strong>
+                Includes complimentary on-site setup, wire check & surge protection verification by our authorized technician.
               </div>
             </div>
-
-            {exchangeOldBattery && (
-              <div className="mt-3 pt-3 border-t border-emerald-200 flex items-center justify-between text-xs font-black text-emerald-900">
-                <span>Net Effective Price per unit:</span>
-                <span className="text-base">₹{effectivePrice.toLocaleString("en-IN")}</span>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Quantity & Buy Actions */}
           <div className="space-y-4 pt-2">
@@ -248,10 +258,37 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
       </div>
 
-      {/* Technical Specifications Layout (from detailed_layout JSONB) */}
-      <div className="mt-12 pt-10 border-t border-slate-200">
+      {/* Compatible Applications & Vehicle Compatibility Section */}
+      {product.detailed_layout?.application && (
+        <div className="mt-12 pt-8 border-t border-slate-200">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <h2 className="text-base font-black text-navy uppercase tracking-wide">
+              Application & Equipment Compatibility
+            </h2>
+          </div>
+          <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+            {product.detailed_layout.application}
+          </p>
+          {product.detailed_layout.compatible_applications && product.detailed_layout.compatible_applications.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {product.detailed_layout.compatible_applications.map((app, i) => (
+                <span
+                  key={i}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200/80 text-slate-800 text-xs font-semibold"
+                >
+                  ✓ {app}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Technical Specifications Layout */}
+      <div className="mt-10 pt-8 border-t border-slate-200">
         <h2 className="text-xl font-black text-navy tracking-tight mb-6">
-          Technical Specifications & Features
+          Technical Specifications & Engineering Details
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -264,30 +301,48 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   <td className="py-3 px-4 font-bold text-slate-500">Brand & Manufacturer</td>
                   <td className="py-3 px-4 font-extrabold text-navy">{product.brand_name}</td>
                 </tr>
-                <tr>
-                  <td className="py-3 px-4 font-bold text-slate-500">Model SKU</td>
-                  <td className="py-3 px-4 font-extrabold text-navy">{product.model_sku}</td>
-                </tr>
+                {product.brand_series && (
+                  <tr>
+                    <td className="py-3 px-4 font-bold text-slate-500">Brand Series</td>
+                    <td className="py-3 px-4 font-extrabold text-navy">{product.brand_series}</td>
+                  </tr>
+                )}
                 <tr className="bg-slate-50">
+                  <td className="py-3 px-4 font-bold text-slate-500">Model SKU</td>
+                  <td className="py-3 px-4 font-extrabold text-navy font-mono">{product.model_sku}</td>
+                </tr>
+                <tr>
                   <td className="py-3 px-4 font-bold text-slate-500">Nominal Capacity</td>
                   <td className="py-3 px-4 font-extrabold text-navy">{product.capacity || "N/A"}</td>
                 </tr>
-                <tr>
+                <tr className="bg-slate-50">
                   <td className="py-3 px-4 font-bold text-slate-500">Operating Voltage</td>
                   <td className="py-3 px-4 font-extrabold text-navy">{product.voltage || "12V DC"}</td>
                 </tr>
-                <tr className="bg-slate-50">
-                  <td className="py-3 px-4 font-bold text-slate-500">Plate & Internal Technology</td>
-                  <td className="py-3 px-4 font-extrabold text-navy">{product.plate_technology || "Tall Tubular Spine"}</td>
+                <tr>
+                  <td className="py-3 px-4 font-bold text-slate-500">Plate & Internal Metallurgy</td>
+                  <td className="py-3 px-4 font-extrabold text-navy">{product.plate_technology || "Lead-Acid Technology"}</td>
+                </tr>
+                {product.detailed_layout?.layout_type && (
+                  <tr className="bg-slate-50">
+                    <td className="py-3 px-4 font-bold text-slate-500">Terminal / Form Factor Layout</td>
+                    <td className="py-3 px-4 font-extrabold text-navy">{product.detailed_layout.layout_type}</td>
+                  </tr>
+                )}
+                <tr>
+                  <td className="py-3 px-4 font-bold text-slate-500">Warranty Coverage</td>
+                  <td className="py-3 px-4 font-extrabold text-navy">
+                    {product.total_warranty_months} Months ({product.foc_months}M Free Replacement + {product.pro_rata_months}M Pro-Rata)
+                  </td>
                 </tr>
                 {product.detailed_layout?.filled_weight_kg && (
-                  <tr>
+                  <tr className="bg-slate-50">
                     <td className="py-3 px-4 font-bold text-slate-500">Filled Gross Weight</td>
                     <td className="py-3 px-4 font-extrabold text-navy">{product.detailed_layout.filled_weight_kg} kg</td>
                   </tr>
                 )}
                 {product.detailed_layout?.dimensions_mm && (
-                  <tr className="bg-slate-50">
+                  <tr>
                     <td className="py-3 px-4 font-bold text-slate-500">Dimensions (L × W × H)</td>
                     <td className="py-3 px-4 font-extrabold text-navy">
                       {product.detailed_layout.dimensions_mm.length} × {product.detailed_layout.dimensions_mm.width} × {product.detailed_layout.dimensions_mm.height} mm
@@ -295,13 +350,13 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   </tr>
                 )}
                 {product.detailed_layout?.electrolyte_volume_litres && (
-                  <tr>
+                  <tr className="bg-slate-50">
                     <td className="py-3 px-4 font-bold text-slate-500">Acid Electrolyte Volume</td>
                     <td className="py-3 px-4 font-extrabold text-navy">{product.detailed_layout.electrolyte_volume_litres} Litres</td>
                   </tr>
                 )}
                 {product.detailed_layout?.recommended_inverter_va && (
-                  <tr className="bg-slate-50">
+                  <tr>
                     <td className="py-3 px-4 font-bold text-slate-500">Recommended Inverter VA</td>
                     <td className="py-3 px-4 font-extrabold text-navy">{product.detailed_layout.recommended_inverter_va}</td>
                   </tr>
@@ -313,11 +368,11 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           {/* Key Product Highlights */}
           <div className="space-y-4">
             <h3 className="font-bold text-sm text-navy uppercase tracking-wider">
-              Engineering Features & Warranty Policies
+              Engineering Features & Reliability Guarantee
             </h3>
             
             <div className="space-y-2.5">
-              {product.detailed_layout?.features ? (
+              {product.detailed_layout?.features && product.detailed_layout.features.length > 0 ? (
                 product.detailed_layout.features.map((feat, i) => (
                   <div key={i} className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -328,15 +383,15 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 <>
                   <div className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <span>Engineered for deep-cycle discharges during frequent Varanasi power outages.</span>
+                    <span>Engineered for severe climatic variations and deep discharge cycles.</span>
                   </div>
                   <div className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <span>Low water loss technology requiring top-up only once or twice a year.</span>
+                    <span>Factory-charged with proprietary metallurgy for high crank power & durability.</span>
                   </div>
                   <div className="flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-100">
                     <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                    <span>Direct factory guarantee registered online at installation.</span>
+                    <span>100% Genuine product with direct official manufacturer warranty.</span>
                   </div>
                 </>
               )}

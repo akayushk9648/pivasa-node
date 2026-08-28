@@ -28,14 +28,24 @@ interface CartStore {
 
 // Industry standard scrap battery trade-in values
 export function calculateScrapValue(capacity?: string | null): number {
-  if (!capacity) return 1000;
-  const num = parseInt(capacity.replace(/\D/g, ""), 10);
-  if (isNaN(num)) return 1000;
-  if (num >= 200) return 3000;
-  if (num >= 150) return 2500;
-  if (num >= 100) return 1800;
-  if (num >= 60) return 1200;
-  return 800; // Small bike/car battery
+  if (!capacity) return 800;
+  const upper = capacity.toUpperCase();
+  
+  // Standalone inverters / UPS units (VA or Wh without Ah)
+  if ((upper.includes("VA") || upper.includes("WH")) && !upper.includes("AH")) {
+    return 0; // Pure UPS machines don't have lead-acid scrap by default
+  }
+
+  const num = parseInt(capacity.replace(/[^0-9]/g, ""), 10);
+  if (isNaN(num)) return 800;
+  
+  if (num <= 14) return 200;       // Motorcycle / Scooter (2.5Ah - 14Ah)
+  if (num <= 45) return 800;       // Small Hatchback / 3W (32Ah - 45Ah)
+  if (num <= 65) return 1000;      // Mid Sedan / SUV (50Ah - 65Ah)
+  if (num <= 88) return 1400;      // Heavy SUV / Tractor (75Ah - 88Ah)
+  if (num <= 130) return 1800;     // LCV / Medium Commercial (100Ah - 130Ah)
+  if (num <= 180) return 2400;     // Tall Tubular / Truck (150Ah - 180Ah)
+  return 3000;                     // High-capacity Tubular / Solar (200Ah - 260Ah+)
 }
 
 export const useCartStore = create<CartStore>()(

@@ -94,6 +94,11 @@ export default function ProductCard({ product }: { product: Product }) {
               {product.voltage}
             </span>
           )}
+          {product.detailed_layout?.layout_type && product.detailed_layout.layout_type !== "Standard" && (
+            <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold border border-blue-200/60">
+              {product.detailed_layout.layout_type}
+            </span>
+          )}
           {product.plate_technology && (
             <span className="px-2 py-0.5 rounded bg-slate-100 font-semibold text-slate-700 truncate max-w-[140px]">
               {product.plate_technology}
@@ -115,10 +120,16 @@ export default function ProductCard({ product }: { product: Product }) {
             
             {/* Exchange Offer Badge */}
             <div className="text-right">
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
-                With Scrap: ₹{exchangePrice.toLocaleString("en-IN")}
-              </span>
+              {scrapDiscount > 0 ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  <Sparkles className="h-2.5 w-2.5 text-emerald-600" />
+                  With Scrap: ₹{exchangePrice.toLocaleString("en-IN")}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  Free Installation
+                </span>
+              )}
             </div>
           </div>
 

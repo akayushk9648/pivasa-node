@@ -36,19 +36,46 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         matchCat =
           catId === "b0000000-0000-0000-0000-000000000001" ||
           catName.includes("tubular") ||
-          (Boolean(product.plate_technology?.toLowerCase().includes("tubular")) && !catName.includes("automotive"));
+          (Boolean(product.plate_technology?.toLowerCase().includes("tubular")) && !catName.includes("e-rickshaw") && !catName.includes("solar"));
       } else if (catSlug === "inverters-ups" || catSlug === "inverters") {
         matchCat =
           catId === "b0000000-0000-0000-0000-000000000002" ||
           catName.includes("ups") ||
-          (catName.includes("inverter") && !catName.includes("batter")) ||
+          (catName.includes("inverter") && !catName.includes("tubular") && !catName.includes("batter")) ||
           Boolean(product.capacity?.toLowerCase().includes("va")) ||
+          Boolean(product.capacity?.toLowerCase().includes("wh")) ||
           Boolean(product.plate_technology?.toLowerCase().includes("sine wave"));
-      } else if (catSlug === "automotive-batteries" || catSlug === "car-batteries") {
+      } else if (catSlug === "car-batteries" || catSlug === "automotive-batteries" || catSlug === "passenger-car") {
         matchCat =
           catId === "b0000000-0000-0000-0000-000000000003" ||
-          catName.includes("automotive") ||
-          (!product.plate_technology?.toLowerCase().includes("tubular") && !catName.includes("tubular") && !catName.includes("inverter"));
+          catName.includes("passenger") ||
+          catName.includes("car");
+      } else if (catSlug === "two-wheeler-batteries" || catSlug === "bike-batteries" || catSlug === "two-wheeler") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000004" ||
+          catName.includes("two wheeler") ||
+          catName.includes("bike");
+      } else if (catSlug === "commercial-batteries" || catSlug === "truck-batteries" || catSlug === "commercial") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000005" ||
+          catName.includes("commercial") ||
+          catName.includes("truck") ||
+          catName.includes("tractor");
+      } else if (catSlug === "e-rickshaw-batteries" || catSlug === "three-wheeler-batteries" || catSlug === "e-rickshaw") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000006" ||
+          catName.includes("e-rickshaw") ||
+          catName.includes("three wheeler");
+      } else if (catSlug === "solar-batteries" || catSlug === "genset-batteries" || catSlug === "solar") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000007" ||
+          catName.includes("solar") ||
+          catName.includes("genset");
+      } else if (catSlug === "industrial-batteries" || catSlug === "industrial") {
+        matchCat =
+          catId === "b0000000-0000-0000-0000-000000000008" ||
+          catName.includes("industrial") ||
+          catName.includes("standby");
       }
 
       if (!matchCat) return false;
@@ -71,7 +98,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         product.model_sku.toLowerCase().includes(searchQuery) ||
         (product.brand_series && product.brand_series.toLowerCase().includes(searchQuery)) ||
         (product.capacity && product.capacity.toLowerCase().includes(searchQuery)) ||
-        (product.plate_technology && product.plate_technology.toLowerCase().includes(searchQuery));
+        (product.plate_technology && product.plate_technology.toLowerCase().includes(searchQuery)) ||
+        (product.detailed_layout?.application && product.detailed_layout.application.toLowerCase().includes(searchQuery));
       if (!match) return false;
     }
 
@@ -90,6 +118,17 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const dynamicBrands = Array.from(new Set(allProducts.map((p) => p.brand_name).filter(Boolean)));
   const defaultBrands = ["Exide", "Amaron", "Luminous", "Microtek", "APC by Schneider Electric"];
   const brands = Array.from(new Set([...dynamicBrands, ...defaultBrands]));
+
+  const catalogCategories = [
+    { slug: "inverter-batteries", label: "Inverter Tubular Batteries" },
+    { slug: "inverters-ups", label: "Inverters & Home UPS" },
+    { slug: "car-batteries", label: "Car & Passenger Batteries" },
+    { slug: "two-wheeler-batteries", label: "Two Wheeler Batteries" },
+    { slug: "commercial-batteries", label: "Commercial & Truck Batteries" },
+    { slug: "e-rickshaw-batteries", label: "Three Wheeler & E-Rickshaw" },
+    { slug: "solar-batteries", label: "Genset & Solar Batteries" },
+    { slug: "industrial-batteries", label: "Industrial & Standby Power" },
+  ];
 
   return (
     <div className="bg-slate-50 min-h-screen pb-20">
@@ -157,30 +196,21 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 >
                   All Categories
                 </Link>
-                <Link
-                  href={`/products?category=inverter-batteries${activeBrand ? `&brand=${activeBrand}` : ""}`}
-                  className={`block px-3 py-2 rounded-lg transition-colors ${
-                    activeCategory === "inverter-batteries" ? "bg-navy text-white font-bold" : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  Inverter Tubular Batteries
-                </Link>
-                <Link
-                  href={`/products?category=inverters-ups${activeBrand ? `&brand=${activeBrand}` : ""}`}
-                  className={`block px-3 py-2 rounded-lg transition-colors ${
-                    activeCategory === "inverters-ups" ? "bg-navy text-white font-bold" : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  Inverters & Home UPS
-                </Link>
-                <Link
-                  href={`/products?category=automotive-batteries${activeBrand ? `&brand=${activeBrand}` : ""}`}
-                  className={`block px-3 py-2 rounded-lg transition-colors ${
-                    activeCategory === "automotive-batteries" ? "bg-navy text-white font-bold" : "text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  Automotive Batteries
-                </Link>
+                {catalogCategories.map((c) => (
+                  <Link
+                    key={c.slug}
+                    href={`/products?${new URLSearchParams({
+                      category: c.slug,
+                      ...(activeBrand && { brand: activeBrand }),
+                      ...(inStockOnly && { inStock: "true" }),
+                    }).toString()}`}
+                    className={`block px-3 py-2 rounded-lg transition-colors ${
+                      activeCategory === c.slug ? "bg-navy text-white font-bold" : "text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {c.label}
+                  </Link>
+                ))}
               </div>
             </div>
 

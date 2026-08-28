@@ -8,6 +8,7 @@ node_modules/
 coverage/
 test.css
 test-output.css
+downloaded_images/
 
 # Next.js build output
 .next/

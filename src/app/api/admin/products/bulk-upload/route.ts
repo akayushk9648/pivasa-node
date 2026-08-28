@@ -64,9 +64,17 @@ export async function POST(req: NextRequest) {
 
     // Fetch existing categories to auto-link
     const allCategories = await db.select().from(categories);
-    const inverterCat = allCategories.find((c) => c.categoryName.toLowerCase().includes("inverter") && !c.categoryName.toLowerCase().includes("battery"));
-    const tubularCat = allCategories.find((c) => c.categoryName.toLowerCase().includes("tubular"));
-    const autoCat = allCategories.find((c) => c.categoryName.toLowerCase().includes("automotive") || c.categoryName.toLowerCase().includes("car"));
+    const getCat = (predicate: (name: string) => boolean) =>
+      allCategories.find((c) => predicate(c.categoryName.toLowerCase())) || null;
+
+    const tubularCat = getCat((n) => n.includes("tubular") && !n.includes("rickshaw") && !n.includes("solar"));
+    const inverterCat = getCat((n) => n.includes("inverter &") || (n.includes("ups") && !n.includes("tubular")));
+    const carCat = getCat((n) => n.includes("passenger") || n.includes("car"));
+    const twoWheelerCat = getCat((n) => n.includes("two wheeler") || n.includes("bike"));
+    const commCat = getCat((n) => n.includes("commercial") || n.includes("heavy"));
+    const erickshawCat = getCat((n) => n.includes("rickshaw") || n.includes("three wheeler"));
+    const solarCat = getCat((n) => n.includes("solar") || n.includes("genset"));
+    const industrialCat = getCat((n) => n.includes("industrial") || n.includes("standby"));
 
     let successCount = 0;
     let failedCount = 0;
@@ -138,25 +146,24 @@ export async function POST(req: NextRequest) {
         // Extract Link / Slug
         const linkVal = findRowValue(row, "link", "Slug", "URL", "Product Link");
 
-        // Extract Category / Status
-        const categoryVal = findRowValue(row, "Category / Status", "Category/Status", "Category", "Sub Category", "Type");
-
         // Extract Brand Series
-        const seriesVal = findRowValue(row, "Brand Series", "BrandSeries", "brand_series", "Series", "Model Range");
+        const seriesVal = findRowValue(row, "Brand Series", "Series", "brand_series", "Category / Status", "Family");
 
-        // Extract Capacity
-        const capacityVal = findRowValue(row, "Capacity (Ah / VA)", "Capacity(Ah/VA)", "Capacity", "Ah", "VA", "Rating");
+        // Extract Category
+        const categoryVal = findRowValue(row, "Category / Status", "Category", "category_id", "Type");
 
-        // Extract Voltage
-        const voltageVal = findRowValue(row, "Voltage (V)", "Voltage(V)", "Voltage", "Volt", "Volts") || "12V";
+        // Extract Capacity & Voltage
+        const capacityVal = findRowValue(row, "Capacity (Ah / VA)", "Capacity", "capacity", "Ah", "VA", "Power Rating");
+        const voltageVal = findRowValue(row, "Voltage (V)", "Voltage", "voltage", "Volts") || "12V";
 
         // Extract Plate Technology
         const techVal = findRowValue(
           row,
           "Plate Technology / Metallurgy",
           "Plate Technology",
-          "plate_technology",
           "Technology",
+          "plate_technology",
+          "Metallurgy",
           "Battery Type"
         ) || "Lead-Acid Technology";
 
@@ -234,24 +241,22 @@ export async function POST(req: NextRequest) {
 
         // Determine Category
         let categoryId: string | null = null;
-        const categoryText = `${categoryVal || ""} ${brand} ${seriesVal || ""} ${capacityVal || ""} ${techVal || ""}`.toLowerCase();
+        const categoryText = `${categoryVal || ""} ${brand} ${seriesVal || ""} ${capacityVal || ""} ${techVal || ""} ${layoutVal || ""}`.toLowerCase();
 
-        if (categoryText.includes("inverter ups") || categoryText.includes("home ups") || categoryText.includes("va") || categoryText.includes("sine wave") || categoryText.includes("lithium smart")) {
+        if (categoryText.includes("inverter ups") || categoryText.includes("home ups") || categoryText.includes(" pure sine") || (categoryText.includes("va") && !categoryText.includes("ah")) || categoryText.includes("lithium smart")) {
           categoryId = inverterCat?.id || null;
-        } else if (
-          categoryText.includes("passenger") ||
-          categoryText.includes("car") ||
-          categoryText.includes("two wheeler") ||
-          categoryText.includes("three wheeler") ||
-          categoryText.includes("commercial") ||
-          categoryText.includes("truck") ||
-          categoryText.includes("tractor") ||
-          categoryText.includes("agri") ||
-          categoryText.includes("genset") ||
-          categoryText.includes("taxi") ||
-          categoryText.includes("bike")
-        ) {
-          categoryId = autoCat?.id || null;
+        } else if (categoryText.includes("solar") || categoryText.includes("c10") || categoryText.includes("genset") || categoryText.includes("gen-set")) {
+          categoryId = solarCat?.id || null;
+        } else if (categoryText.includes("e-rickshaw") || categoryText.includes("erickshaw") || categoryText.includes("three wheeler") || categoryText.includes("3-wheeler")) {
+          categoryId = erickshawCat?.id || null;
+        } else if (categoryText.includes("two wheeler") || categoryText.includes("2-wheeler") || categoryText.includes("motorcycle") || categoryText.includes("scooter") || categoryText.includes("bike")) {
+          categoryId = twoWheelerCat?.id || null;
+        } else if (categoryText.includes("commercial") || categoryText.includes("truck") || categoryText.includes("tractor") || categoryText.includes("bus") || categoryText.includes("earthmover") || categoryText.includes("heavy vehicle")) {
+          categoryId = commCat?.id || null;
+        } else if (categoryText.includes("industrial") || categoryText.includes("smf vrla") || categoryText.includes("plante") || categoryText.includes("powersafe") || categoryText.includes("2v cell")) {
+          categoryId = industrialCat?.id || null;
+        } else if (categoryText.includes("passenger") || categoryText.includes("car") || categoryText.includes("suv") || categoryText.includes("sedan") || categoryText.includes("taxi")) {
+          categoryId = carCat?.id || null;
         } else {
           categoryId = tubularCat?.id || null;
         }

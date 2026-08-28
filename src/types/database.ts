@@ -32,6 +32,9 @@ export interface Category {
 }
 
 export interface DetailedProductLayout {
+  layout_type?: string;
+  application?: string;
+  compatible_applications?: string[];
   dimensions_mm?: {
     length?: number;
     width?: number;
