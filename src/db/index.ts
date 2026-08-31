@@ -62,10 +62,6 @@ function parseDatabaseConfig(): postgres.Options<any> | string {
       }
     }
 
-    if (!password) {
-      password = "Arsh#nanhi3";
-    }
-
     const isSupabase = host.includes("supabase.co") || host.includes("supabase.com") || host.includes("pooler");
 
     return {

@@ -21,12 +21,19 @@ import LoadCalculator from "@/components/calculator/LoadCalculator";
 export default async function Home() {
   const products = await getProducts({ inStockOnly: true });
 
-  const featuredBatteries = products.filter(
-    (p) => p.plate_technology?.includes("Tubular") || p.capacity?.includes("Ah")
+  let featuredBatteries = products.filter(
+    (p) => p.plate_technology?.includes("Tubular") || p.capacity?.includes("Ah") || p.brand_name?.toLowerCase().includes("exide")
   ).slice(0, 3);
 
+  if (featuredBatteries.length === 0) {
+    featuredBatteries = products.slice(0, 3);
+  }
+  if (featuredBatteries.length === 0) {
+    featuredBatteries = SAMPLE_PRODUCTS.slice(0, 3);
+  }
+
   let featuredInverters = products.filter(
-    (p) => p.plate_technology?.includes("Sine Wave") || p.capacity?.includes("VA")
+    (p) => p.plate_technology?.includes("Sine Wave") || p.capacity?.includes("VA") || p.model_sku?.toLowerCase().includes("inverter")
   ).slice(0, 3);
 
   if (featuredInverters.length === 0) {

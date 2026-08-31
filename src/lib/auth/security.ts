@@ -69,43 +69,27 @@ export function hashPassword(password: string, salt: string): string {
 }
 
 /**
- * Robust and constant-time password verification supporting PBKDF2, legacy hashes, and master fallback
+ * Constant-time password verification checking against database salt and password_hash
  */
 export function verifyPassword(
   password: string,
   salt: string | null | undefined,
   storedHash: string | null | undefined
 ): boolean {
-  if (!password) return false;
+  if (!password || !salt || !storedHash) return false;
 
-  // 1. Try PBKDF2 verification if salt and storedHash are present
-  if (salt && storedHash) {
-    try {
-      const computedHash = hashPassword(password, salt);
-      if (computedHash.length === storedHash.length) {
-        let result = 0;
-        for (let i = 0; i < computedHash.length; i++) {
-          result |= computedHash.charCodeAt(i) ^ storedHash.charCodeAt(i);
-        }
-        if (result === 0) return true;
-      }
-    } catch {
-      // proceed to fallbacks
+  try {
+    const computedHash = hashPassword(password, salt);
+    if (computedHash.length !== storedHash.length) return false;
+
+    let result = 0;
+    for (let i = 0; i < computedHash.length; i++) {
+      result |= computedHash.charCodeAt(i) ^ storedHash.charCodeAt(i);
     }
+    return result === 0;
+  } catch {
+    return false;
   }
-
-  // 2. Master configured admin password match
-  const masterPassword = process.env.ADMIN_PASSWORD || "pivasa@admin2026";
-  if (password === masterPassword || password === "pivasa123" || password === "pivasa@admin2026") {
-    return true;
-  }
-
-  // 3. Direct plaintext match if legacy record
-  if (storedHash && storedHash === password) {
-    return true;
-  }
-
-  return false;
 }
 
 /**

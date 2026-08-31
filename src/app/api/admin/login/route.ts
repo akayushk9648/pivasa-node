@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, adminUsers } from "@/db";
+import { db, adminUsers, getClient } from "@/db";
 import { eq, or } from "drizzle-orm";
-import { verifyPassword, createSessionToken, generateSalt, hashPassword } from "@/lib/auth/security";
+import { verifyPassword, createSessionToken } from "@/lib/auth/security";
 import { ensureAdminTableAndSeed } from "@/lib/auth/admin-init";
 import { logError, logInfo } from "@/lib/logger";
 
@@ -20,26 +20,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
-    // Ensure database table and default admin seed exist
+    // 1. Ensure table and initial schema are in sync
     await ensureAdminTableAndSeed();
 
-    const targetEmail = (email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com") 
-      ? "admin@pivasapower.com" 
+    const targetEmail = (email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com")
+      ? "admin@pivasapower.com"
       : email;
 
-    // 1. Query admin user from database
-    let admin: typeof adminUsers.$inferSelect | undefined;
+    // 2. Fetch admin user directly from Supabase PostgreSQL database
+    let admin: any = null;
 
     try {
-      const results = await db
-        .select()
-        .from(adminUsers)
-        .where(or(eq(adminUsers.email, targetEmail), eq(adminUsers.email, email)))
-        .limit(1);
+      const sql = getClient();
+      const rows = await sql`
+        SELECT id, email, full_name, password_hash, salt, role, failed_attempts, locked_until, last_login_at
+        FROM public.admin_users
+        WHERE lower(email) = ${targetEmail} OR lower(email) = ${email}
+        LIMIT 1;
+      `;
 
-      admin = results[0];
-    } catch (queryErr: any) {
-      logError(queryErr, { route: "/api/admin/login", action: "Query adminUsers" }, "DATABASE_ERROR");
+      if (rows && rows.length > 0) {
+        admin = {
+          id: rows[0].id,
+          email: rows[0].email,
+          fullName: rows[0].full_name,
+          passwordHash: rows[0].password_hash,
+          salt: rows[0].salt,
+          role: rows[0].role,
+          failedAttempts: rows[0].failed_attempts,
+          lockedUntil: rows[0].locked_until,
+          lastLoginAt: rows[0].last_login_at,
+        };
+      }
+    } catch (sqlErr: any) {
+      logError(sqlErr, { route: "/api/admin/login", action: "Query admin_users via SQL" }, "DATABASE_ERROR");
+    }
+
+    // Fallback to Drizzle ORM query if direct SQL missed
+    if (!admin) {
+      try {
+        const results = await db
+          .select()
+          .from(adminUsers)
+          .where(or(eq(adminUsers.email, targetEmail), eq(adminUsers.email, email)))
+          .limit(1);
+
+        if (results && results.length > 0) {
+          const r = results[0];
+          admin = {
+            id: r.id,
+            email: r.email,
+            fullName: r.fullName,
+            passwordHash: r.passwordHash,
+            salt: r.salt,
+            role: r.role,
+            failedAttempts: r.failedAttempts,
+            lockedUntil: r.lockedUntil,
+            lastLoginAt: r.lastLoginAt,
+          };
+        }
+      } catch (drizzleErr: any) {
+        logError(drizzleErr, { route: "/api/admin/login", action: "Query admin_users via Drizzle" }, "DATABASE_ERROR");
+      }
     }
 
     if (!admin) {
@@ -51,7 +93,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid admin credentials." }, { status: 401 });
     }
 
-    // 3. Check if account is locked
+    // 3. Check account lockout
     if (admin.lockedUntil && new Date() < new Date(admin.lockedUntil)) {
       const remainingMinutes = Math.ceil(
         (new Date(admin.lockedUntil).getTime() - Date.now()) / (1000 * 60)
@@ -62,7 +104,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Verify password
+    // 4. Verify password against the cryptographic salt and password_hash from the database
     const isValid = verifyPassword(password, admin.salt, admin.passwordHash);
 
     if (!isValid) {
@@ -71,16 +113,14 @@ export async function POST(req: NextRequest) {
       const lockedUntil = isNowLocked ? new Date(Date.now() + LOCKOUT_MINUTES * 60 * 1000) : null;
 
       try {
-        await db
-          .update(adminUsers)
-          .set({
-            failedAttempts: nextFailedCount,
-            lockedUntil,
-            updatedAt: new Date(),
-          })
-          .where(eq(adminUsers.id, admin.id));
+        const sql = getClient();
+        await sql`
+          UPDATE public.admin_users
+          SET failed_attempts = ${nextFailedCount}, locked_until = ${lockedUntil}, updated_at = now()
+          WHERE id = ${admin.id};
+        `;
       } catch (err) {
-        // Ignore
+        // Ignore update error on failed attempt
       }
 
       logError(
@@ -103,30 +143,22 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Reset lockout and update last login + refresh salt/hash if needed
+    // 5. Authentication successful: reset failed attempts and update last_login_at in database
     try {
-      const salt = admin.salt || generateSalt();
-      const passwordHash = admin.salt ? admin.passwordHash : hashPassword(password, salt);
-
-      await db
-        .update(adminUsers)
-        .set({
-          failedAttempts: 0,
-          lockedUntil: null,
-          salt,
-          passwordHash,
-          lastLoginAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(adminUsers.id, admin.id));
+      const sql = getClient();
+      await sql`
+        UPDATE public.admin_users
+        SET failed_attempts = 0, locked_until = NULL, last_login_at = now(), updated_at = now()
+        WHERE id = ${admin.id};
+      `;
     } catch (err) {
-      // Ignore
+      // Ignore timestamp update error
     }
 
-    logInfo(`Admin successfully authenticated: '${admin.email}'`);
+    logInfo(`Admin successfully authenticated from DB: '${admin.email}'`);
 
     // 6. Issue HMAC signed session token
-    const sessionToken = await createSessionToken(admin.id, admin.email, admin.role, 7);
+    const sessionToken = await createSessionToken(admin.id, admin.email, admin.role || "super_admin", 7);
 
     const response = NextResponse.json({
       success: true,

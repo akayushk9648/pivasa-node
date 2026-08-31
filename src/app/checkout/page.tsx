@@ -231,52 +231,35 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Payment Method Selector */}
+            {/* Payment Method */}
             <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
                 <span className="flex items-center justify-center h-6 w-6 rounded-full bg-navy text-white text-xs font-bold">2</span>
-                <h2 className="font-extrabold text-lg text-navy">Payment Method</h2>
+                <h2 className="font-extrabold text-lg text-navy">Payment Option</h2>
               </div>
 
-              <div className="space-y-3">
-                <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                  formData.paymentMethod === "COD" ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="COD"
-                      checked={formData.paymentMethod === "COD"}
-                      onChange={() => setFormData({ ...formData, paymentMethod: "COD" })}
-                      className="h-4 w-4 text-primary accent-primary"
-                    />
-                    <div>
-                      <span className="font-extrabold text-sm text-navy block">Pay on Installation / Cash on Delivery (COD)</span>
-                      <span className="text-xs text-slate-500">Pay cash or UPI to our technician after battery installation & testing</span>
+              <div className="p-4 rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/40 flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-700 mt-0.5">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="font-extrabold text-sm text-navy block">
+                      Pay on Delivery / Installation (COD)
+                    </span>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      Zero advance payment required. Inspect genuine serial numbers and get free doorstep installation by our certified technician before paying.
+                    </p>
+                    <div className="mt-2.5 flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+                      <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">Cash</span>
+                      <span>or</span>
+                      <span className="px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">UPI Scan to Technician</span>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full">Recommended</span>
-                </label>
-
-                <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${
-                  formData.paymentMethod === "UPI" ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
-                }`}>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="UPI"
-                      checked={formData.paymentMethod === "UPI"}
-                      onChange={() => setFormData({ ...formData, paymentMethod: "UPI" })}
-                      className="h-4 w-4 text-primary accent-primary"
-                    />
-                    <div>
-                      <span className="font-extrabold text-sm text-navy block">UPI / QR Scan</span>
-                      <span className="text-xs text-slate-500">Google Pay, PhonePe, Paytm, BHIM UPI</span>
-                    </div>
-                  </div>
-                </label>
+                </div>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full shrink-0">
+                  100% Risk-Free
+                </span>
               </div>
             </div>
 
