@@ -112,14 +112,19 @@ CREATE TABLE upload_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
--- Admin Users Table
+-- Admin Users Table (Secure HMAC & PBKDF2 salt/hash)
 CREATE TABLE admin_users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(100) UNIQUE NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    full_name TEXT NOT NULL DEFAULT 'Administrator',
     password_hash TEXT NOT NULL,
-    role VARCHAR(50) NOT NULL DEFAULT 'admin',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+    salt TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL DEFAULT 'super_admin',
+    failed_attempts INTEGER NOT NULL DEFAULT 0,
+    locked_until TIMESTAMP WITH TIME ZONE,
+    last_login_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- ============================================================================
@@ -253,10 +258,10 @@ INSERT INTO products (sku, name, brand, category, sub_category, description, pri
 ON CONFLICT (sku) DO NOTHING;
 
 -- Seed Default Master Admin Account
--- Username: pivasa | Password: pivasa123 (Bcrypt hash)
-INSERT INTO admin_users (username, email, password_hash, role) VALUES
-('pivasa', 'admin@pivasapower.com', '$2a$10$wE4V0zL9kL1BwH1CjX4r7uVvL0G1H2J3K4L5M6N7O8P9Q0R1S2T3U', 'admin')
-ON CONFLICT (username) DO NOTHING;
+-- Email: admin@pivasapower.com
+INSERT INTO admin_users (email, full_name, password_hash, salt, role) VALUES
+('admin@pivasapower.com', 'Pivasa Super Admin', 'e0996fa1eaae10e05dc79fa4f0c438fc78ef86481816e8851493fc18feea7fc8c67a3a8ce79ec845a704256eb28ea8ecb4ba62ec54bece8a3068e1a141a0f51a', '26b8cb79be6a42a0b1df6f881f3d606f', 'super_admin')
+ON CONFLICT (email) DO NOTHING;
 
 -- ============================================================================
 -- 7. Supabase Row Level Security (RLS) Policies

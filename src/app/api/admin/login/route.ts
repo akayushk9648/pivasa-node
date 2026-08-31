@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, adminUsers } from "@/db";
 import { eq, or } from "drizzle-orm";
-import { verifyPassword, createSessionToken, hashPassword, generateSalt } from "@/lib/auth/security";
+import { verifyPassword, createSessionToken } from "@/lib/auth/security";
+import { ensureAdminTableAndSeed } from "@/lib/auth/admin-init";
 import { logError, logInfo } from "@/lib/logger";
 
 const MAX_FAILED_ATTEMPTS = 5;
@@ -19,7 +20,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
-    const targetEmail = (email === "admin" || email === "admin@pivasa.com") 
+    // Ensure database table and default admin seed exist
+    await ensureAdminTableAndSeed();
+
+    const targetEmail = (email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com") 
       ? "admin@pivasapower.com" 
       : email;
 
@@ -36,32 +40,6 @@ export async function POST(req: NextRequest) {
       admin = results[0];
     } catch (queryErr: any) {
       logError(queryErr, { route: "/api/admin/login", action: "Query adminUsers" }, "DATABASE_ERROR");
-    }
-
-    // 2. Self-healing fallback: seed default admin if missing
-    if (!admin && targetEmail === "admin@pivasapower.com") {
-      try {
-        const defaultPassword = process.env.ADMIN_PASSWORD || "pivasa@admin2026";
-        const salt = generateSalt();
-        const passwordHash = hashPassword(defaultPassword, salt);
-
-        const [newAdmin] = await db
-          .insert(adminUsers)
-          .values({
-            email: "admin@pivasapower.com",
-            fullName: "Pivasa Super Admin",
-            passwordHash,
-            salt,
-            role: "super_admin",
-            failedAttempts: 0,
-          })
-          .returning();
-
-        admin = newAdmin;
-        logInfo("Auto-seeded default admin user in admin_users table");
-      } catch (seedErr) {
-        console.warn("Could not auto-seed admin:", seedErr);
-      }
     }
 
     if (!admin) {
