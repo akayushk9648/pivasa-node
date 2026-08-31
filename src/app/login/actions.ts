@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, adminUsers } from "@/db";
 import { eq, or } from "drizzle-orm";
-import { verifyPassword, createSessionToken } from "@/lib/auth/security";
+import { verifyPassword, createSessionToken, generateSalt, hashPassword } from "@/lib/auth/security";
 import { ensureAdminTableAndSeed } from "@/lib/auth/admin-init";
 import { logError, logInfo } from "@/lib/logger";
 
@@ -104,11 +104,16 @@ export async function login(formData: FormData) {
 
   // 5. Reset lock/failed attempts and record login timestamp
   try {
+    const salt = admin.salt || generateSalt();
+    const passwordHash = admin.salt ? admin.passwordHash : hashPassword(password, salt);
+
     await db
       .update(adminUsers)
       .set({
         failedAttempts: 0,
         lockedUntil: null,
+        salt,
+        passwordHash,
         lastLoginAt: new Date(),
         updatedAt: new Date(),
       })

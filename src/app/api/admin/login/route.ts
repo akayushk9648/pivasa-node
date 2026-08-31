@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, adminUsers } from "@/db";
 import { eq, or } from "drizzle-orm";
-import { verifyPassword, createSessionToken } from "@/lib/auth/security";
+import { verifyPassword, createSessionToken, generateSalt, hashPassword } from "@/lib/auth/security";
 import { ensureAdminTableAndSeed } from "@/lib/auth/admin-init";
 import { logError, logInfo } from "@/lib/logger";
 
@@ -103,13 +103,18 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Reset lockout and update last login
+    // 5. Reset lockout and update last login + refresh salt/hash if needed
     try {
+      const salt = admin.salt || generateSalt();
+      const passwordHash = admin.salt ? admin.passwordHash : hashPassword(password, salt);
+
       await db
         .update(adminUsers)
         .set({
           failedAttempts: 0,
           lockedUntil: null,
+          salt,
+          passwordHash,
           lastLoginAt: new Date(),
           updatedAt: new Date(),
         })
