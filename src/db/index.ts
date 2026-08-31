@@ -2,32 +2,72 @@ import { drizzle, PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-function getConnectionString(): string {
-  let rawUrl = process.env.DATABASE_URL || "";
+function parseDatabaseConfig(): postgres.Options<any> | string {
+  const rawUrl = process.env.DATABASE_URL || "";
   if (!rawUrl) {
     throw new Error(
       "DATABASE_URL is missing. Please set DATABASE_URL in your hosting environment variables."
     );
   }
 
-  // Handle unescaped special characters in password/user (e.g. '#' or '@')
-  const match = rawUrl.match(/^(postgres(?:ql)?:\/\/)([^:]+):(.*)@([^/?#]+)(.*)$/);
-  if (match) {
-    const [, protocol, username, password, hostPort, rest] = match;
-    try {
-      const safeUser = encodeURIComponent(decodeURIComponent(username));
-      const safePassword = encodeURIComponent(decodeURIComponent(password));
-      rawUrl = `${protocol}${safeUser}:${safePassword}@${hostPort}${rest}`;
-    } catch {
-      // fallback if decoding fails
-    }
-  }
+  try {
+    // Extract parts manually to avoid URI / '#' encoding and fragment truncation issues
+    const prefixMatch = rawUrl.match(/^(postgres(?:ql)?:\/\/)/i);
+    if (!prefixMatch) return rawUrl;
 
-  // Automatically route through Supabase Transaction Pooler port 6543 to avoid connection exhaustion
-  if (rawUrl.includes("pooler.supabase.com:5432")) {
-    rawUrl = rawUrl.replace(":5432", ":6543");
+    const withoutPrefix = rawUrl.slice(prefixMatch[1].length);
+    const atIndex = withoutPrefix.lastIndexOf("@");
+    if (atIndex === -1) return rawUrl;
+
+    const authPart = withoutPrefix.slice(0, atIndex);
+    const hostPart = withoutPrefix.slice(atIndex + 1);
+
+    const colonIndex = authPart.indexOf(":");
+    let username = colonIndex !== -1 ? authPart.slice(0, colonIndex) : authPart;
+    let password = colonIndex !== -1 ? authPart.slice(colonIndex + 1) : "";
+
+    username = decodeURIComponent(username);
+    password = decodeURIComponent(password);
+
+    const [hostAndPort, ...restPath] = hostPart.split("/");
+    const pathAndQuery = restPath.join("/");
+    const [database] = pathAndQuery.split("?");
+
+    const [host, portStr] = hostAndPort.split(":");
+    let port = portStr ? parseInt(portStr, 10) : 5432;
+
+    // Automatically route through Supabase Transaction Pooler port 6543
+    if (host.includes("pooler.supabase.com") && port === 5432) {
+      port = 6543;
+    }
+
+    // Auto-fix: On Supabase Pooler, username must be `postgres.[PROJECT-REF]`
+    if (host.includes("pooler.supabase.com") && username === "postgres") {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+      const match = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/);
+      if (match && match[1]) {
+        username = `postgres.${match[1]}`;
+      }
+    }
+
+    const isSupabase = host.includes("supabase.co") || host.includes("supabase.com") || host.includes("pooler");
+
+    return {
+      host,
+      port,
+      database: database || "postgres",
+      username,
+      password,
+      ssl: isSupabase ? "require" : undefined,
+      prepare: false, // Transaction pooler requires prepared statements disabled
+      max: 10,
+      idle_timeout: 20,
+      connect_timeout: 15,
+    };
+  } catch (err) {
+    console.warn("Failed custom parsing of DATABASE_URL, using raw URL fallback:", err);
+    return rawUrl;
   }
-  return rawUrl;
 }
 
 declare global {
@@ -39,16 +79,8 @@ declare global {
 
 export function getClient(): postgres.Sql {
   if (!globalThis.postgresClient) {
-    const conn = getConnectionString();
-    const isSupabase = conn.includes("supabase.com") || conn.includes("pooler");
-
-    globalThis.postgresClient = postgres(conn, {
-      prepare: false, // Transaction pooler requires prepared statements disabled
-      max: 10,
-      idle_timeout: 20,
-      connect_timeout: 15,
-      ssl: isSupabase ? "require" : undefined,
-    });
+    const config = parseDatabaseConfig();
+    globalThis.postgresClient = typeof config === "string" ? postgres(config, { prepare: false }) : postgres(config);
   }
   return globalThis.postgresClient;
 }
