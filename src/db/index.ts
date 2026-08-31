@@ -33,21 +33,37 @@ function parseDatabaseConfig(): postgres.Options<any> | string {
     const pathAndQuery = restPath.join("/");
     const [database] = pathAndQuery.split("?");
 
-    const [host, portStr] = hostAndPort.split(":");
+    let [host, portStr] = hostAndPort.split(":");
     let port = portStr ? parseInt(portStr, 10) : 5432;
 
-    // Automatically route through Supabase Transaction Pooler port 6543
-    if (host.includes("pooler.supabase.com") && port === 5432) {
+    let projectRef = "bpqwyrwwwxcbunzswbdd";
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const urlMatch = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/);
+    if (urlMatch && urlMatch[1]) {
+      projectRef = urlMatch[1];
+    }
+
+    // Direct Supabase host routing (IPv4 pooler)
+    if (host.includes(".supabase.co")) {
+      const directMatch = host.match(/db\.([^.]+)\.supabase\.co/);
+      if (directMatch && directMatch[1]) {
+        projectRef = directMatch[1];
+      }
+      host = "aws-0-ap-south-1.pooler.supabase.com";
       port = 6543;
     }
 
-    // Auto-fix: On Supabase Pooler, username must be `postgres.[PROJECT-REF]`
-    if (host.includes("pooler.supabase.com") && username === "postgres") {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-      const match = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/);
-      if (match && match[1]) {
-        username = `postgres.${match[1]}`;
+    // Automatically route through Supabase Transaction Pooler port 6543
+    if (host.includes("pooler.supabase.com")) {
+      port = 6543;
+      // Auto-fix: On Supabase Pooler, username must be `postgres.[PROJECT-REF]`
+      if (!username.includes(".")) {
+        username = `postgres.${projectRef}`;
       }
+    }
+
+    if (!password) {
+      password = "Arsh#nanhi3";
     }
 
     const isSupabase = host.includes("supabase.co") || host.includes("supabase.com") || host.includes("pooler");
