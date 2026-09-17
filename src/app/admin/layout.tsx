@@ -27,6 +27,26 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [seeding, setSeeding] = useState(false);
   const [seedMessage, setSeedMessage] = useState<string | null>(null);
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [dbError, setDbError] = useState<string | null>(null);
+  const [showBanner, setShowBanner] = useState(true);
+
+  React.useEffect(() => {
+    const checkDb = async () => {
+      try {
+        const res = await fetch("/api/admin/health");
+        const data = await res.json();
+        setDbConnected(!!data.connected);
+        if (!data.connected) {
+          setDbError(data.error || "Supabase project may be paused or offline");
+        }
+      } catch {
+        setDbConnected(false);
+        setDbError("Database health check failed");
+      }
+    };
+    checkDb();
+  }, []);
 
   const handleSeedData = async () => {
     if (!confirm("This will seed standard products, inventory, and sample orders into PostgreSQL. Proceed?")) {
@@ -85,10 +105,22 @@ export default function AdminLayout({
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-navy-light text-[10px] font-bold text-slate-300">
               <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Admin Control Hub
             </div>
-            <div className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800/50">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Live DB
-            </div>
+            {dbConnected === null ? (
+              <div className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-bold bg-slate-800/60 px-2 py-0.5 rounded-full">
+                <span className="h-1.5 w-1.5 rounded-full bg-slate-400 animate-pulse"></span>
+                Checking...
+              </div>
+            ) : dbConnected ? (
+              <div className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800/50" title="Connected to PostgreSQL">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                Live DB
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-1 text-[10px] text-amber-300 font-bold bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-800/50" title={dbError || "PostgreSQL offline"}>
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+                Offline DB
+              </div>
+            )}
           </div>
         </div>
 
@@ -154,6 +186,22 @@ export default function AdminLayout({
 
       {/* Main App Work Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {dbConnected === false && showBanner && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between text-xs text-amber-900 shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>
+                <strong>Database Offline / Paused:</strong> Remote Supabase PostgreSQL is unreachable. Running in master fail-safe mode. To enable live database synchronization, please unpause your project in the <a href="https://supabase.com/dashboard" target="_blank" rel="noreferrer" className="underline font-bold text-amber-950 hover:text-amber-800">Supabase Dashboard</a> or verify <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[11px]">DATABASE_URL</code> in <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[11px]">.env.local</code>.
+              </span>
+            </div>
+            <button
+              onClick={() => setShowBanner(false)}
+              className="text-amber-700 hover:text-amber-950 font-bold px-2 py-0.5 text-xs rounded hover:bg-amber-100 transition-colors ml-4 shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {children}
       </div>
     </div>

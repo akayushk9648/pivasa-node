@@ -20,15 +20,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email and password are required." }, { status: 400 });
     }
 
+    const targetEmail =
+      email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com"
+        ? "admin@pivasapower.com"
+        : email;
+
     // 1. Ensure table and initial schema are in sync
     await ensureAdminTableAndSeed();
 
-    const targetEmail = (email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com")
-      ? "admin@pivasapower.com"
-      : email;
-
-    // 2. Fetch admin user directly from Supabase PostgreSQL database
+    // 2. Fetch admin user directly from PostgreSQL database (public.admin_users)
     let admin: any = null;
+    let databaseConnectionError: string | null = null;
 
     try {
       const sql = getClient();
@@ -53,11 +55,12 @@ export async function POST(req: NextRequest) {
         };
       }
     } catch (sqlErr: any) {
+      databaseConnectionError = sqlErr?.message || "PostgreSQL connection failed";
       logError(sqlErr, { route: "/api/admin/login", action: "Query admin_users via SQL" }, "DATABASE_ERROR");
     }
 
     // Fallback to Drizzle ORM query if direct SQL missed
-    if (!admin) {
+    if (!admin && !databaseConnectionError) {
       try {
         const results = await db
           .select()
@@ -80,10 +83,22 @@ export async function POST(req: NextRequest) {
           };
         }
       } catch (drizzleErr: any) {
+        databaseConnectionError = drizzleErr?.message || "Drizzle connection failed";
         logError(drizzleErr, { route: "/api/admin/login", action: "Query admin_users via Drizzle" }, "DATABASE_ERROR");
       }
     }
 
+    // If database cannot be reached, return transparent database error
+    if (databaseConnectionError && !admin) {
+      return NextResponse.json(
+        {
+          error: `Database connection failed (${databaseConnectionError}). Supabase project may be paused or offline. Please verify your connection in .env.local.`,
+        },
+        { status: 503 }
+      );
+    }
+
+    // Check if user exists in the database
     if (!admin) {
       logError(
         new Error(`Failed admin login attempt: Unknown email '${email}'`),
@@ -93,18 +108,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid admin credentials." }, { status: 401 });
     }
 
-    // 3. Check account lockout
+    // 3. Check account lockout in database
     if (admin.lockedUntil && new Date() < new Date(admin.lockedUntil)) {
       const remainingMinutes = Math.ceil(
         (new Date(admin.lockedUntil).getTime() - Date.now()) / (1000 * 60)
       );
       return NextResponse.json(
-        { error: `Account temporarily locked due to excessive failed attempts. Please try again in ${remainingMinutes} minute(s).` },
+        {
+          error: `Account temporarily locked due to excessive failed attempts. Please try again in ${remainingMinutes} minute(s).`,
+        },
         { status: 403 }
       );
     }
 
-    // 4. Verify password against the cryptographic salt and password_hash from the database
+    // 4. Cryptographically verify password against salt and password_hash stored in DB
     const isValid = verifyPassword(password, admin.salt, admin.passwordHash);
 
     if (!isValid) {
@@ -120,7 +137,7 @@ export async function POST(req: NextRequest) {
           WHERE id = ${admin.id};
         `;
       } catch (err) {
-        // Ignore update error on failed attempt
+        // Ignore DB update error on failed attempt
       }
 
       logError(
@@ -143,7 +160,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 5. Authentication successful: reset failed attempts and update last_login_at in database
+    // 5. Authentication successful: reset failed attempts & update last login in DB
     try {
       const sql = getClient();
       await sql`
@@ -152,12 +169,12 @@ export async function POST(req: NextRequest) {
         WHERE id = ${admin.id};
       `;
     } catch (err) {
-      // Ignore timestamp update error
+      // Ignore update error
     }
 
     logInfo(`Admin successfully authenticated from DB: '${admin.email}'`);
 
-    // 6. Issue HMAC signed session token
+    // 6. Issue cryptographically signed HMAC-SHA256 session token
     const sessionToken = await createSessionToken(admin.id, admin.email, admin.role || "super_admin", 7);
 
     const response = NextResponse.json({

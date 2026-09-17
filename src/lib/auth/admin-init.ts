@@ -50,12 +50,13 @@ export async function ensureAdminTableAndSeed(): Promise<void> {
     await sql`ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now());`;
     await sql`ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now());`;
 
-    // 4. Seed default super-admin if table is empty or missing admin@pivasapower.com
-    const defaultEmail = "admin@pivasapower.com";
-    const existing = await sql`SELECT id, salt, password_hash FROM public.admin_users WHERE email = ${defaultEmail} LIMIT 1`;
+    // 4. Seed or sync default super-admin
+    const defaultEmail = (process.env.ADMIN_EMAIL || "admin@pivasapower.com").trim().toLowerCase();
+    const defaultPassword = process.env.ADMIN_PASSWORD || "pivasa@admin2026";
+
+    const existing = await sql`SELECT id, salt, password_hash FROM public.admin_users WHERE lower(email) = ${defaultEmail} LIMIT 1`;
 
     if (existing.length === 0) {
-      const defaultPassword = process.env.ADMIN_PASSWORD || "pivasa@admin2026";
       const salt = generateSalt();
       const passwordHash = hashPassword(defaultPassword, salt);
 
@@ -78,11 +79,25 @@ export async function ensureAdminTableAndSeed(): Promise<void> {
         ON CONFLICT (email) DO NOTHING;
       `;
       logInfo("Successfully auto-seeded default admin user: " + defaultEmail);
+    } else {
+      // If user exists, ensure salt and valid hash are in place for the default password
+      const user = existing[0];
+      if (!user.salt || !user.password_hash) {
+        const salt = generateSalt();
+        const passwordHash = hashPassword(defaultPassword, salt);
+        await sql`
+          UPDATE public.admin_users
+          SET salt = ${salt}, password_hash = ${passwordHash}, failed_attempts = 0, locked_until = NULL, updated_at = now()
+          WHERE id = ${user.id};
+        `;
+        logInfo("Successfully synchronized salt and hash for admin user: " + defaultEmail);
+      }
     }
 
     globalThis.__adminTableInitialized = true;
   } catch (err: any) {
+    // Gracefully catch database offline / timeout errors without crashing the request
     logError(err, { route: "admin-init", action: "ensureAdminTableAndSeed" }, "DATABASE_ERROR");
-    console.error("Failed to initialize admin_users table:", err);
+    console.warn("Notice: PostgreSQL not reachable during ensureAdminTableAndSeed (fallback mode active):", err.message || err);
   }
 }

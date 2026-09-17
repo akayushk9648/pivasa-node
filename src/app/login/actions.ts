@@ -22,15 +22,18 @@ export async function login(formData: FormData) {
     redirect("/login?message=Email and password are required");
   }
 
-  // 1. Ensure table & seed exist
+  // 1. Ensure table & schema exist
   await ensureAdminTableAndSeed();
 
-  const targetEmail = (email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com")
-    ? "admin@pivasapower.com"
-    : email;
+  const targetEmail =
+    email === "admin" || email === "admin@pivasa.com" || email === "pivasapower@gmail.com"
+      ? "admin@pivasapower.com"
+      : email;
 
-  // 2. Fetch admin user directly from Supabase PostgreSQL database
+  // 2. Fetch admin user directly from PostgreSQL database (public.admin_users)
   let admin: any = null;
+  let databaseErrorOccurred = false;
+  let dbErrorDetail = "";
 
   try {
     const sql = getClient();
@@ -55,11 +58,13 @@ export async function login(formData: FormData) {
       };
     }
   } catch (sqlErr: any) {
+    databaseErrorOccurred = true;
+    dbErrorDetail = sqlErr?.message || "Connection failed";
     logError(sqlErr, { route: "/login", action: "Query admin_users via SQL" }, "DATABASE_ERROR");
   }
 
-  // Fallback to Drizzle ORM query
-  if (!admin) {
+  // Fallback to Drizzle ORM query if direct SQL missed
+  if (!admin && !databaseErrorOccurred) {
     try {
       const results = await db
         .select()
@@ -82,8 +87,14 @@ export async function login(formData: FormData) {
         };
       }
     } catch (drizzleErr: any) {
+      databaseErrorOccurred = true;
+      dbErrorDetail = drizzleErr?.message || "Drizzle query failed";
       logError(drizzleErr, { route: "/login", action: "Query admin_users via Drizzle" }, "DATABASE_ERROR");
     }
+  }
+
+  if (databaseErrorOccurred && !admin) {
+    redirect(`/login?message=Database service unreachable (${encodeURIComponent(dbErrorDetail)}). Please verify PostgreSQL status in Supabase.`);
   }
 
   if (!admin) {
@@ -95,7 +106,7 @@ export async function login(formData: FormData) {
     redirect("/login?message=Invalid admin credentials");
   }
 
-  // 3. Check account lockout
+  // 3. Check account lockout in DB
   if (admin.lockedUntil && new Date() < new Date(admin.lockedUntil)) {
     const remainingMinutes = Math.ceil(
       (new Date(admin.lockedUntil).getTime() - Date.now()) / (1000 * 60)
@@ -105,7 +116,7 @@ export async function login(formData: FormData) {
     );
   }
 
-  // 4. Cryptographically verify password against salt and hash in the database
+  // 4. Cryptographically verify password against salt and password_hash in the database
   const isValid = verifyPassword(password, admin.salt, admin.passwordHash);
 
   if (!isValid) {
@@ -142,7 +153,7 @@ export async function login(formData: FormData) {
     }
   }
 
-  // 5. Authentication successful: reset lock/failed attempts and record login timestamp
+  // 5. Authentication successful: reset lock/failed attempts and record login timestamp in DB
   try {
     const sql = getClient();
     await sql`
