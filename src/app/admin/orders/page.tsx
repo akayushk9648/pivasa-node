@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Eye,
   Filter,
-  Layers
+  Layers,
+  Pencil
 } from "lucide-react";
 
 export default function AdminOrdersPage() {
@@ -217,28 +218,39 @@ export default function AdminOrdersPage() {
                         </td>
 
                         <td className="py-3.5 px-5 text-right" onClick={(e) => e.stopPropagation()}>
-                          <select
-                            value={ord.status}
-                            onChange={(e) => handleUpdateStatus(ord.id, e.target.value)}
-                            className={`text-xs font-bold py-1.5 px-3 rounded-xl border cursor-pointer focus:outline-none ${
-                              ord.status === "confirmed"
-                                ? "bg-blue-50 text-blue-800 border-blue-200"
-                                : ord.status === "processing"
-                                ? "bg-amber-50 text-amber-800 border-amber-200"
-                                : ord.status === "shipped"
-                                ? "bg-indigo-50 text-indigo-800 border-indigo-200"
-                                : ord.status === "delivered"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                : "bg-slate-50 text-slate-800 border-slate-200"
-                            }`}
-                          >
-                            <option value="pending">Pending</option>
-                            <option value="confirmed">Confirmed</option>
-                            <option value="processing">Processing</option>
-                            <option value="shipped">Out for Delivery</option>
-                            <option value="delivered">Delivered</option>
-                            <option value="cancelled">Cancelled</option>
-                          </select>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setSelectedOrder(ord)}
+                              className="px-2.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-primary hover:border-primary/40 hover:bg-primary/5 text-xs font-bold transition-all flex items-center gap-1"
+                              title="Edit Customer / Order Details"
+                            >
+                              <Pencil className="h-3 w-3" /> Edit
+                            </button>
+                            <select
+                              value={ord.status}
+                              onChange={(e) => handleUpdateStatus(ord.id, e.target.value)}
+                              className={`text-xs font-bold py-1.5 px-3 rounded-xl border cursor-pointer focus:outline-none ${
+                                ord.status === "confirmed"
+                                  ? "bg-blue-50 text-blue-800 border-blue-200"
+                                  : ord.status === "processing"
+                                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                                  : ord.status === "shipped"
+                                  ? "bg-indigo-50 text-indigo-800 border-indigo-200"
+                                  : ord.status === "delivered"
+                                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                  : ord.status === "cancelled"
+                                  ? "bg-rose-50 text-rose-800 border-rose-200"
+                                  : "bg-slate-50 text-slate-800 border-slate-200"
+                              }`}
+                            >
+                              <option value="pending">Pending</option>
+                              <option value="confirmed">Confirmed</option>
+                              <option value="processing">Processing</option>
+                              <option value="shipped">Out for Delivery</option>
+                              <option value="delivered">Delivered</option>
+                              <option value="cancelled">Cancelled</option>
+                            </select>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -257,6 +269,7 @@ export default function AdminOrdersPage() {
         isOpen={Boolean(selectedOrder)}
         onClose={() => setSelectedOrder(null)}
         onStatusChange={handleUpdateStatus}
+        onOrderUpdated={loadOrders}
       />
 
     </main>

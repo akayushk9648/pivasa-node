@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import BulkUploadModal from "@/components/admin/BulkUploadModal";
 import AddProductModal from "@/components/admin/AddProductModal";
+import EditProductModal from "@/components/admin/EditProductModal";
 import { 
   TrendingUp, 
   ShoppingCart, 
@@ -18,7 +19,8 @@ import {
   AlertTriangle, 
   Trash2, 
   ExternalLink,
-  Layers
+  Layers,
+  Pencil
 } from "lucide-react";
 
 export default function AdminDashboardPage() {
@@ -27,6 +29,8 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any | null>(null);
   const [filterQuery, setFilterQuery] = useState("");
   const [brandFilter, setBrandFilter] = useState("all");
   const [toast, setToast] = useState<string | null>(null);
@@ -311,7 +315,7 @@ export default function AdminDashboardPage() {
                         ₹{parseFloat(prod.approxMrp || "0").toLocaleString("en-IN")}
                       </td>
 
-                      {/* Live Stock Toggle & Delete */}
+                      {/* Live Stock Toggle, Edit & Delete */}
                       <td className="py-3.5 px-5 text-right">
                         <div className="inline-flex items-center gap-2">
                           <button
@@ -323,6 +327,18 @@ export default function AdminDashboardPage() {
                             }`}
                           >
                             {prod.isInStock ? "✓ In Stock" : "✗ Out of Stock"}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setEditingProduct(prod);
+                              setIsEditOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
+                            title="Edit Product Details"
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-slate-500" />
+                            <span>Edit</span>
                           </button>
 
                           <button
@@ -352,6 +368,20 @@ export default function AdminDashboardPage() {
         onClose={() => setIsAddOpen(false)}
         onSuccess={() => {
           showToast("Product successfully created in database!");
+          loadData();
+        }}
+      />
+
+      {/* Edit Product Modal */}
+      <EditProductModal
+        product={editingProduct}
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingProduct(null);
+        }}
+        onSuccess={() => {
+          showToast("Product successfully updated in database!");
           loadData();
         }}
       />

@@ -1,35 +1,57 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, Plus, Loader2, Package, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, Save, Loader2, Package, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
-interface AddProductModalProps {
+interface EditProductModalProps {
+  product: any | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProductModalProps) {
+export default function EditProductModal({ product, isOpen, onClose, onSuccess }: EditProductModalProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
-    brandName: "Exide",
+    brandName: "",
     modelSku: "",
     brandSeries: "",
     approxMrp: "",
-    capacity: "150 Ah",
-    voltage: "12V",
-    plateTechnology: "Tall Tubular Technology",
-    totalWarrantyMonths: "60",
-    focMonths: "36",
-    proRataMonths: "24",
-    initialQuantity: "15",
-    imageUrl: "https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?auto=format&fit=crop&w=800&q=80",
-    features: "High pressure cast spine;Factory charged;Ceramic water level indicators",
+    capacity: "",
+    voltage: "",
+    plateTechnology: "",
+    totalWarrantyMonths: "",
+    focMonths: "",
+    proRataMonths: "",
+    isInStock: true,
+    imageUrl: "",
+    status: "active",
   });
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (product) {
+      setFormData({
+        brandName: product.brandName || "",
+        modelSku: product.modelSku || "",
+        brandSeries: product.brandSeries || "",
+        approxMrp: product.approxMrp !== undefined ? String(product.approxMrp) : "",
+        capacity: product.capacity || "",
+        voltage: product.voltage || "12V",
+        plateTechnology: product.plateTechnology || "",
+        totalWarrantyMonths: product.totalWarrantyMonths !== undefined ? String(product.totalWarrantyMonths) : "60",
+        focMonths: product.focMonths !== undefined ? String(product.focMonths) : "36",
+        proRataMonths: product.proRataMonths !== undefined ? String(product.proRataMonths) : "24",
+        isInStock: product.isInStock !== undefined ? Boolean(product.isInStock) : true,
+        imageUrl: product.imageUrl || "",
+        status: product.status || "active",
+      });
+      setError(null);
+    }
+  }, [product, isOpen]);
+
+  if (!isOpen || !product) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,21 +59,35 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
     setError(null);
 
     try {
-      const res = await fetch("/api/admin/products", {
-        method: "POST",
+      const res = await fetch(`/api/admin/products/${product.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          brandName: formData.brandName,
+          modelSku: formData.modelSku,
+          brandSeries: formData.brandSeries,
+          approxMrp: Number(formData.approxMrp) || 0,
+          capacity: formData.capacity,
+          voltage: formData.voltage,
+          plateTechnology: formData.plateTechnology,
+          totalWarrantyMonths: Number(formData.totalWarrantyMonths) || 0,
+          focMonths: Number(formData.focMonths) || 0,
+          proRataMonths: Number(formData.proRataMonths) || 0,
+          isInStock: Boolean(formData.isInStock),
+          imageUrl: formData.imageUrl,
+          status: formData.status,
+        }),
       });
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to create product.");
+        throw new Error(data.error || "Failed to update product.");
       }
 
       onSuccess();
       onClose();
     } catch (err: any) {
-      setError(err.message || "Failed to create product");
+      setError(err.message || "Failed to update product");
     } finally {
       setLoading(false);
     }
@@ -64,10 +100,12 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-100">
           <div>
-            <span className="text-xs font-black uppercase text-primary tracking-wider">
-              Catalog Management
-            </span>
-            <h2 className="text-2xl font-black text-navy">Add New Product & SKU</h2>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-extrabold uppercase tracking-wider">
+              Edit Catalog SKU
+            </div>
+            <h2 className="text-2xl font-black text-navy mt-1">
+              Edit Product: {formData.modelSku || product.modelSku}
+            </h2>
           </div>
           <button
             onClick={onClose}
@@ -139,7 +177,7 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
             </div>
           </div>
 
-          {/* Row 3: Capacity, Voltage, Initial Qty */}
+          {/* Row 3: Capacity, Voltage, Stock Status */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-slate-700 font-bold mb-1">Capacity</label>
@@ -158,112 +196,105 @@ export default function AddProductModal({ isOpen, onClose, onSuccess }: AddProdu
                 type="text"
                 value={formData.voltage}
                 onChange={(e) => setFormData({ ...formData, voltage: e.target.value })}
-                placeholder="12V"
+                placeholder="12V or 24V"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Initial Stock Qty</label>
-              <input
-                type="number"
-                value={formData.initialQuantity}
-                onChange={(e) => setFormData({ ...formData, initialQuantity: e.target.value })}
-                placeholder="10"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary font-bold text-navy"
-              />
+              <label className="block text-slate-700 font-bold mb-1">Stock Availability</label>
+              <select
+                value={formData.isInStock ? "true" : "false"}
+                onChange={(e) => setFormData({ ...formData, isInStock: e.target.value === "true" })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary font-semibold"
+              >
+                <option value="true">In Stock (Available)</option>
+                <option value="false">Out of Stock</option>
+              </select>
             </div>
           </div>
 
-          {/* Row 4: Warranty terms */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Total Warranty (Months)</label>
-              <input
-                type="number"
-                value={formData.totalWarrantyMonths}
-                onChange={(e) => setFormData({ ...formData, totalWarrantyMonths: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Free Replacement (FOC)</label>
-              <input
-                type="number"
-                value={formData.focMonths}
-                onChange={(e) => setFormData({ ...formData, focMonths: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1">Pro-Rata Warranty</label>
-              <input
-                type="number"
-                value={formData.proRataMonths}
-                onChange={(e) => setFormData({ ...formData, proRataMonths: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-          </div>
-
-          {/* Technology & Image URL */}
+          {/* Row 4: Plate Technology */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Plate / Circuit Technology</label>
+            <label className="block text-slate-700 font-bold mb-1">Plate Technology</label>
             <input
               type="text"
               value={formData.plateTechnology}
               onChange={(e) => setFormData({ ...formData, plateTechnology: e.target.value })}
-              placeholder="e.g. Tall Tubular Technology, Pure Sine Wave"
+              placeholder="Tall Tubular Technology, Pure Sine Wave, Flat Plate, etc."
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
 
+          {/* Row 5: Warranty Months Breakdown */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Total Warranty (M)</label>
+              <input
+                type="number"
+                value={formData.totalWarrantyMonths}
+                onChange={(e) => setFormData({ ...formData, totalWarrantyMonths: e.target.value })}
+                placeholder="60"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Free-of-Cost (FOC)</label>
+              <input
+                type="number"
+                value={formData.focMonths}
+                onChange={(e) => setFormData({ ...formData, focMonths: e.target.value })}
+                placeholder="36"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white"
+              />
+            </div>
+            <div>
+              <label className="block text-slate-700 font-bold mb-1">Pro-Rata Months</label>
+              <input
+                type="number"
+                value={formData.proRataMonths}
+                onChange={(e) => setFormData({ ...formData, proRataMonths: e.target.value })}
+                placeholder="24"
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-white"
+              />
+            </div>
+          </div>
+
+          {/* Row 6: Image URL */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Image URL</label>
+            <label className="block text-slate-700 font-bold mb-1">Product Image URL</label>
             <input
               type="text"
               value={formData.imageUrl}
               onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
               placeholder="/products/name.jpg or https://..."
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary text-slate-500 font-mono text-[11px]"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary font-mono text-[11px]"
             />
           </div>
 
-          <div>
-            <label className="block text-slate-700 font-bold mb-1">Bullet Features (Separated by Semicolons)</label>
-            <input
-              type="text"
-              value={formData.features}
-              onChange={(e) => setFormData({ ...formData, features: e.target.value })}
-              placeholder="Feature 1; Feature 2; Feature 3"
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          {/* Footer Actions */}
+          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 font-bold text-slate-700 hover:bg-slate-100 transition-colors"
+              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-xs transition-colors"
             >
               Cancel
             </button>
-
             <button
               type="submit"
               disabled={loading}
-              className="bg-primary hover:bg-primary-hover disabled:bg-slate-300 text-white font-extrabold px-6 py-2.5 rounded-xl shadow-md shadow-primary/20 transition-all flex items-center gap-2"
+              className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-extrabold text-xs shadow-md shadow-primary/20 flex items-center gap-2 transition-all disabled:opacity-50"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Saving to Database...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Saving Changes...</span>
                 </>
               ) : (
                 <>
-                  <Plus className="h-4 w-4" /> Add Product
+                  <Save className="h-4 w-4" />
+                  <span>Save Changes</span>
                 </>
               )}
             </button>

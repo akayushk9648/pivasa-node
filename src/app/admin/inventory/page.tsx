@@ -12,12 +12,16 @@ import {
   RefreshCw, 
   Filter, 
   Warehouse,
-  ExternalLink
+  ExternalLink,
+  Pencil
 } from "lucide-react";
+import EditInventoryModal from "@/components/admin/EditInventoryModal";
 
 export default function AdminInventoryPage() {
   const [inventoryList, setInventoryList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editingItem, setEditingItem] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [filterQuery, setFilterQuery] = useState("");
   const [lowStockFilter, setLowStockFilter] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -231,24 +235,38 @@ export default function AdminInventoryPage() {
                         </td>
 
                         <td className="py-3.5 px-5 text-right">
-                          <div className="inline-flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                          <div className="inline-flex items-center gap-2">
+                            <div className="inline-flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+                              <button
+                                onClick={() => handleAdjustQuantity(item.productId, -1)}
+                                disabled={item.quantityAvailable === 0}
+                                className="p-1 rounded-lg text-slate-600 hover:bg-white hover:text-navy disabled:opacity-30 transition-all cursor-pointer"
+                                title="Decrease 1 unit"
+                              >
+                                <Minus className="h-3.5 w-3.5" />
+                              </button>
+                              <span className="font-black text-xs w-7 text-center text-navy font-mono">
+                                {item.quantityAvailable}
+                              </span>
+                              <button
+                                onClick={() => handleAdjustQuantity(item.productId, 1)}
+                                className="p-1 rounded-lg text-slate-600 hover:bg-white hover:text-navy transition-all cursor-pointer"
+                                title="Increase 1 unit"
+                              >
+                                <Plus className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+
                             <button
-                              onClick={() => handleAdjustQuantity(item.productId, -1)}
-                              disabled={item.quantityAvailable === 0}
-                              className="p-1 rounded-lg text-slate-600 hover:bg-white hover:text-navy disabled:opacity-30 transition-all cursor-pointer"
-                              title="Decrease 1 unit"
+                              onClick={() => {
+                                setEditingItem(item);
+                                setIsEditOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors border border-slate-200"
+                              title="Edit Stock & Reorder Levels"
                             >
-                              <Minus className="h-3.5 w-3.5" />
-                            </button>
-                            <span className="font-black text-xs w-7 text-center text-navy font-mono">
-                              {item.quantityAvailable}
-                            </span>
-                            <button
-                              onClick={() => handleAdjustQuantity(item.productId, 1)}
-                              className="p-1 rounded-lg text-slate-600 hover:bg-white hover:text-navy transition-all cursor-pointer"
-                              title="Increase 1 unit"
-                            >
-                              <Plus className="h-3.5 w-3.5" />
+                              <Pencil className="h-3 w-3 text-slate-500" />
+                              <span>Edit</span>
                             </button>
                           </div>
                         </td>
@@ -262,6 +280,20 @@ export default function AdminInventoryPage() {
 
         </div>
       </div>
+
+      {/* Edit Inventory Modal */}
+      <EditInventoryModal
+        item={editingItem}
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditingItem(null);
+        }}
+        onSuccess={() => {
+          showToast("Inventory record successfully updated!");
+          loadInventory();
+        }}
+      />
 
     </main>
   );
